@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using Scroll_Layout_Package.Scripts;
 using Unity.VisualScripting;
 using UnityEngine;
 using UnityEngine.EventSystems;
@@ -319,7 +320,7 @@ public class InfiniteScrollVertical : MonoBehaviour
     {
         controllerHoldTimer += Time.deltaTime;
 
-        float verticalInput = GameplayInputHandler.Instance.RawFloatMovementInput();
+        float verticalInput = 2f; GameplayInputHandler.Instance.RawFloatMovementInput();
 
         if (verticalInput > 0.5f) // Scroll Up
         {
