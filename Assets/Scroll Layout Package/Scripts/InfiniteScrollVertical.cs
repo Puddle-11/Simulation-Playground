@@ -40,6 +40,7 @@ public class InfiniteScrollVertical : MonoBehaviour
     [SerializeField] private HoverType hoverType;
     [SerializeField] private bool DissableSelectorOnMove;
     private float holdTimer;
+    private float controllerHoldTimer;
 
     private int currSelect; //this is not always a valid index
     private float mouseTimer;
@@ -126,6 +127,8 @@ public class InfiniteScrollVertical : MonoBehaviour
     //Update is called once per frame
     void Update()
     {
+        GamepadInteraction();
+        
         int tempSelected;
         //temp selected will always be the elemet at the center of the rect
         tempSelected = GetCenterElement();
@@ -305,6 +308,39 @@ public class InfiniteScrollVertical : MonoBehaviour
                 }
 
             }
+        }
+    }
+
+    #endregion
+    
+    #region Gamepad Interaction
+
+    void GamepadInteraction()
+    {
+        controllerHoldTimer += Time.deltaTime;
+
+        float verticalInput = GameplayInputHandler.Instance.RawFloatMovementInput();
+
+        if (verticalInput > 0.5f) // Scroll Up
+        {
+            if (controllerHoldTimer > initHoldDelay + holdSpeed)
+            {
+                controllerHoldTimer = initHoldDelay;
+                UpdateCurrSelected(-1); // Move Up
+            }
+        }
+        else if (verticalInput < -0.5f) // Scroll Down
+        {
+            if (controllerHoldTimer > initHoldDelay + holdSpeed)
+            {
+                controllerHoldTimer = initHoldDelay;
+                UpdateCurrSelected(1); // Move Down
+            }
+        }
+        else
+        {
+            // Reset hold timer when no input
+            controllerHoldTimer = 0;
         }
     }
 
