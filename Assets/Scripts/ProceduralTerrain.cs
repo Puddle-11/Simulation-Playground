@@ -152,6 +152,8 @@ public class ProceduralTerrain : MonoBehaviour
 
         for (int i = 0; i < octave.Length; i++)
         {
+
+
             totalWeight += octave[i].octaveWeight;
             res += Mathf.PerlinNoise(_pos.x / octave[i].octaveScale, _pos.y / octave[i].octaveScale) * octave[i].octaveHeight * octave[i].octaveWeight;
         }

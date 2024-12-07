@@ -51,8 +51,8 @@ public class Gravity : MonoBehaviour
     private void Start()
     {
         RB.useGravity = false;
-        RB.angularDrag = 0;
-        RB.drag = 0;
+        RB.angularDamping = 0;
+        RB.linearDamping = 0;
         //I didnt know if there was a late start method so i made my own. Optimize at your own risk
         StartCoroutine(LateStart(0.01f));
     }
