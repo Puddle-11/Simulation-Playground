@@ -50,7 +50,7 @@ public class InfiniteScrollVertical : MonoBehaviour
     [SerializeField] private bool keyboardInput;
     [SerializeField] private bool staticSelector;
     [SerializeField] private bool loopBack;
-    [SerializeField] private bool clampSelected;
+
     private bool autoScroll = true;
     private float rectSize;
     private float targetY;
@@ -86,7 +86,6 @@ public class InfiniteScrollVertical : MonoBehaviour
         rectSize = items[0].rect.height + layoutGroup.spacing;
         centerOffset = scrollRectTransformRef.rect.height - rectSize * ((viewPortTransform.rect.height / rectSize) + 0.5f) / 2;
 
-        //Construct temp list
         List<RectTransform> totalTemp = new List<RectTransform>();
         for (int i = 0; i < items.Length; i++)
         {
@@ -123,9 +122,6 @@ public class InfiniteScrollVertical : MonoBehaviour
         contentPanelTransform.localPosition = GetTargetPosition(startIndex);
     }
 
-
-
-    //Update is called once per frame
     void Update()
     {
         //  GamepadInteraction();
@@ -139,41 +135,30 @@ public class InfiniteScrollVertical : MonoBehaviour
             mouseTimer += Time.deltaTime;
             if (mouseTimer > 0.2)
             {
-
-                Debug.Log("set scroller: false");
                 autoScroll = false;
                 if (loopBack)
                 {
-                    //finds the item at the center of the screen
                     SetCurrSelected(tempSelected);
                 }
             }
         }
         else
         {
-                mouseTimer = 0;
-            if (autoScroll)
+            mouseTimer = 0;
+            if (autoScroll || loopBack)
             {
                 //Calculate speed based on distance from desired index
-
                 float tMove = Mathf.Clamp(Mathf.Abs(tempSelected - currSelect) * rushFactor, 1, Mathf.Infinity) * moveSpeed;
                 //moves contentpanel towards target position at desired speed
                 contentPanelTransform.localPosition = Vector3.MoveTowards(contentPanelTransform.localPosition, GetTargetPosition(currSelect), tMove * Time.deltaTime);
             }
         }
         scrollRect.vertical = mouseInput;
-        if (mouseInput)
-        {
-            MouseButtonInteraction();
-        }
-        if (keyboardInput)
-        {
-            KeyboardInput();
-        }
-        if (loopBack)
-        {
-            LoopBack();
-        }
+
+        if (mouseInput) MouseButtonInteraction();
+        if (keyboardInput)  KeyboardInput();
+        if (loopBack) LoopBack();
+        
         if (IsValidIndex(currSelect) && !staticSelector) selector.transform.position = totalItems[currSelect].transform.position;
         else if (staticSelector) selector.GetComponent<RectTransform>().anchoredPosition = Vector3.zero;
 
@@ -237,18 +222,18 @@ public class InfiniteScrollVertical : MonoBehaviour
         if (Input.GetKeyDown(KeyCode.W) || Input.GetKeyDown(KeyCode.UpArrow))
         {
             autoScroll = true;
-          
-                ForceUpdateSelected(-1);
-        
+
+            ForceUpdateSelected(-1);
+
         }
         if (Input.GetKeyDown(KeyCode.S) || Input.GetKeyDown(KeyCode.DownArrow))
         {
             autoScroll = true;
-           
-                
-                ForceUpdateSelected(1);
 
-          
+
+            ForceUpdateSelected(1);
+
+
         }
 
         holdTimer += Time.deltaTime;
@@ -259,10 +244,10 @@ public class InfiniteScrollVertical : MonoBehaviour
             {
                 holdTimer = initHoldDelay;
 
-            
 
-                    UpdateCurrSelected(1);
-               
+
+                UpdateCurrSelected(1);
+
             }
         }
         else if (Input.GetKey(KeyCode.W) || Input.GetKey(KeyCode.UpArrow))
@@ -270,11 +255,11 @@ public class InfiniteScrollVertical : MonoBehaviour
             if (holdTimer > initHoldDelay + holdSpeed)
             {
                 holdTimer = initHoldDelay;
-             
 
-                    UpdateCurrSelected(-1);
-             
-                 
+
+                UpdateCurrSelected(-1);
+
+
             }
         }
         else
@@ -533,27 +518,18 @@ public class InfiniteScrollVertical : MonoBehaviour
     void UpdateCurrSelected(int _amount)
     {
         SetCurrSelected(currSelect + _amount);
-
     }
     private void SetCurrSelected(int _index)
     {
+        Debug.Log("set");
         if (loopBack)
         {
             currSelect = _index;
         }
         else
         {
-            if (clampSelected)
-            {
-                currSelect = Mathf.Clamp(_index, 0, totalItems.Length - 1);
-            }
-            else
-            {
-
-                currSelect = BoundSelected(_index, totalItems.Length);
-            }
+            currSelect = Mathf.Clamp(_index, 0, totalItems.Length - 1);
         }
-
 
         if (IsValidIndex(currSelect))
         {
@@ -574,8 +550,6 @@ public class InfiniteScrollVertical : MonoBehaviour
         return rayResults.ToArray();
 
     }
-    #endregion
-
     int BoundSelected(int _index, int _mod)
     {
         if (_index >= 0)
@@ -593,4 +567,6 @@ public class InfiniteScrollVertical : MonoBehaviour
             return res;
         }
     }
+    #endregion
+
 }
