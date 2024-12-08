@@ -50,6 +50,8 @@ public class InfiniteScrollVertical : MonoBehaviour
     [SerializeField] private bool keyboardInput;
     [SerializeField] private bool staticSelector;
     [SerializeField] private bool loopBack;
+    [SerializeField] private bool clampSelected;
+    private bool autoScroll = true;
     private float rectSize;
     private float targetY;
     public RectTransform[] totalItems;
@@ -66,9 +68,8 @@ public class InfiniteScrollVertical : MonoBehaviour
     {
         NoClick = 0,
         OutOfBounds = 1,
-        AboveSelected = 2,
-        BelowSelected = 3,
-        OnSelected = 4
+        OnElement = 2,
+        OnSelected = 3,
     }
     private enum MouseHoverReturn
     {
@@ -127,8 +128,8 @@ public class InfiniteScrollVertical : MonoBehaviour
     //Update is called once per frame
     void Update()
     {
-        GamepadInteraction();
-        
+        //  GamepadInteraction();
+
         int tempSelected;
         //temp selected will always be the elemet at the center of the rect
         tempSelected = GetCenterElement();
@@ -138,18 +139,27 @@ public class InfiniteScrollVertical : MonoBehaviour
             mouseTimer += Time.deltaTime;
             if (mouseTimer > 0.2)
             {
-                //finds the item at the center of the screen
-                SetCurrSelected(tempSelected);
+
+                Debug.Log("set scroller: false");
+                autoScroll = false;
+                if (loopBack)
+                {
+                    //finds the item at the center of the screen
+                    SetCurrSelected(tempSelected);
+                }
             }
         }
         else
         {
-            mouseTimer = 0;
-            //Calculate speed based on distance from desired index
+                mouseTimer = 0;
+            if (autoScroll)
+            {
+                //Calculate speed based on distance from desired index
 
-            float tMove = Mathf.Clamp(Mathf.Abs(tempSelected - currSelect) * rushFactor, 1, Mathf.Infinity) * moveSpeed;
-            //moves contentpanel towards target position at desired speed
-            contentPanelTransform.localPosition = Vector3.MoveTowards(contentPanelTransform.localPosition, GetTargetPosition(currSelect), tMove * Time.deltaTime);
+                float tMove = Mathf.Clamp(Mathf.Abs(tempSelected - currSelect) * rushFactor, 1, Mathf.Infinity) * moveSpeed;
+                //moves contentpanel towards target position at desired speed
+                contentPanelTransform.localPosition = Vector3.MoveTowards(contentPanelTransform.localPosition, GetTargetPosition(currSelect), tMove * Time.deltaTime);
+            }
         }
         scrollRect.vertical = mouseInput;
         if (mouseInput)
@@ -160,8 +170,11 @@ public class InfiniteScrollVertical : MonoBehaviour
         {
             KeyboardInput();
         }
-        LoopBack();
-        if (!(currSelect < 0 || currSelect > totalItems.Length - 1) && !staticSelector) selector.transform.position = totalItems[currSelect].transform.position;
+        if (loopBack)
+        {
+            LoopBack();
+        }
+        if (IsValidIndex(currSelect) && !staticSelector) selector.transform.position = totalItems[currSelect].transform.position;
         else if (staticSelector) selector.GetComponent<RectTransform>().anchoredPosition = Vector3.zero;
 
         //sets the selector active depending on if the scroll rect is moving
@@ -210,7 +223,7 @@ public class InfiniteScrollVertical : MonoBehaviour
     private void KeyboardInput()
     {
 
-        if (!(currSelect < 0 || currSelect > totalItems.Length - 1) && Input.GetKeyDown(KeyCode.Space))
+        if (IsValidIndex(currSelect) && Input.GetKeyDown(KeyCode.Space))
         {
             if (totalItems[currSelect].TryGetComponent(out ScrollButton _scrollButtonRef))
             {
@@ -223,12 +236,19 @@ public class InfiniteScrollVertical : MonoBehaviour
         //keyboard handling
         if (Input.GetKeyDown(KeyCode.W) || Input.GetKeyDown(KeyCode.UpArrow))
         {
-            ForceUpdateSelected(-1);
+            autoScroll = true;
+          
+                ForceUpdateSelected(-1);
+        
         }
         if (Input.GetKeyDown(KeyCode.S) || Input.GetKeyDown(KeyCode.DownArrow))
         {
+            autoScroll = true;
+           
+                
+                ForceUpdateSelected(1);
 
-            ForceUpdateSelected(1);
+          
         }
 
         holdTimer += Time.deltaTime;
@@ -238,8 +258,11 @@ public class InfiniteScrollVertical : MonoBehaviour
             if (holdTimer > initHoldDelay + holdSpeed)
             {
                 holdTimer = initHoldDelay;
-                UpdateCurrSelected(1);
 
+            
+
+                    UpdateCurrSelected(1);
+               
             }
         }
         else if (Input.GetKey(KeyCode.W) || Input.GetKey(KeyCode.UpArrow))
@@ -247,7 +270,11 @@ public class InfiniteScrollVertical : MonoBehaviour
             if (holdTimer > initHoldDelay + holdSpeed)
             {
                 holdTimer = initHoldDelay;
-                UpdateCurrSelected(-1);
+             
+
+                    UpdateCurrSelected(-1);
+             
+                 
             }
         }
         else
@@ -261,16 +288,16 @@ public class InfiniteScrollVertical : MonoBehaviour
     #region Mouse Interactions
     void MouseButtonInteraction()
     {
-        MouseClickRetun r = GetMouseClick();
+        GameObject[] clickList;
+        GameObject button;
+        MouseClickRetun r = GetMouseClick(out clickList, out button);
 
+        //if we are looping
+        if (r == MouseClickRetun.OnElement)
+        {
+            ForceSetSelected(GetIndex(button));
+            autoScroll = true;
 
-        if (r == MouseClickRetun.AboveSelected)
-        {
-            ForceUpdateSelected(-1);
-        }
-        else if (r == MouseClickRetun.BelowSelected)
-        {
-            ForceUpdateSelected(1);
         }
         else if (r == MouseClickRetun.OnSelected)
         {
@@ -312,37 +339,37 @@ public class InfiniteScrollVertical : MonoBehaviour
     }
 
     #endregion
-    
+
     #region Gamepad Interaction
 
-    void GamepadInteraction()
-    {
-        controllerHoldTimer += Time.deltaTime;
+    //void GamepadInteraction()
+    //{
+    //    controllerHoldTimer += Time.deltaTime;
 
-        float verticalInput = GameplayInputHandler.Instance.RawFloatMovementInput();
+    //    float verticalInput = GameplayInputHandler.Instance.RawFloatMovementInput();
 
-        if (verticalInput > 0.5f) // Scroll Up
-        {
-            if (controllerHoldTimer > initHoldDelay + holdSpeed)
-            {
-                controllerHoldTimer = initHoldDelay;
-                UpdateCurrSelected(-1); // Move Up
-            }
-        }
-        else if (verticalInput < -0.5f) // Scroll Down
-        {
-            if (controllerHoldTimer > initHoldDelay + holdSpeed)
-            {
-                controllerHoldTimer = initHoldDelay;
-                UpdateCurrSelected(1); // Move Down
-            }
-        }
-        else
-        {
-            // Reset hold timer when no input
-            controllerHoldTimer = 0;
-        }
-    }
+    //    if (verticalInput > 0.5f) // Scroll Up
+    //    {
+    //        if (controllerHoldTimer > initHoldDelay + holdSpeed)
+    //        {
+    //            controllerHoldTimer = initHoldDelay;
+    //            UpdateCurrSelected(-1); // Move Up
+    //        }
+    //    }
+    //    else if (verticalInput < -0.5f) // Scroll Down
+    //    {
+    //        if (controllerHoldTimer > initHoldDelay + holdSpeed)
+    //        {
+    //            controllerHoldTimer = initHoldDelay;
+    //            UpdateCurrSelected(1); // Move Down
+    //        }
+    //    }
+    //    else
+    //    {
+    //        // Reset hold timer when no input
+    //        controllerHoldTimer = 0;
+    //    }
+    //}
 
     #endregion
 
@@ -369,13 +396,13 @@ public class InfiniteScrollVertical : MonoBehaviour
             switch (hoverType)
             {
                 case HoverType.All:
-                    if (!(currSelect < 0 || currSelect > totalItems.Length - 1) && raycastResults[i].gameObject.GetComponent<ScrollButton>() != null)
+                    if (IsValidIndex(currSelect) && raycastResults[i].gameObject.GetComponent<ScrollButton>() != null)
                     {
                         selectedRes = raycastResults[i].gameObject;
                     }
                     break;
                 case HoverType.Focused:
-                    if (!(currSelect < 0 || currSelect > totalItems.Length - 1) && raycastResults[i].gameObject == totalItems[currSelect].gameObject)
+                    if (IsValidIndex(currSelect) && raycastResults[i].gameObject == totalItems[currSelect].gameObject)
                     {
                         selectedRes = raycastResults[i].gameObject;
                     }
@@ -390,31 +417,55 @@ public class InfiniteScrollVertical : MonoBehaviour
     #region MouseClick
     MouseClickRetun GetMouseClick()
     {
+        return GetMouseClick(out _, out _);
+    }
+    MouseClickRetun GetMouseClick(out GameObject _clickedObj)
+    {
+        return GetMouseClick(out _, out _clickedObj);
+    }
+    MouseClickRetun GetMouseClick(out GameObject[] _allObjects)
+    {
+        return GetMouseClick(out _allObjects, out _);
+    }
+    MouseClickRetun GetMouseClick(out GameObject[] _allObjects, out GameObject _clickedObj)
+    {
         MouseClickRetun returnType = MouseClickRetun.NoClick;
-
+        _allObjects = null;
+        _clickedObj = null;
         if (!Input.GetMouseButtonDown(0)) return returnType;
+
+
+        RaycastResult[] raycastResults = GetMouseRaycast();
+        _allObjects = new GameObject[raycastResults.Length];
+        for (int i = 0; i < _allObjects.Length; i++)
+        {
+            _allObjects[i] = raycastResults[i].gameObject;
+        }
 
         returnType = MouseClickRetun.OutOfBounds;
 
         RaycastResult[] rayResults = GetMouseRaycast();
 
         bool inBounds = false;
-        if (!(currSelect < 0 || currSelect > totalItems.Length - 1))
+
+        if (IsValidIndex(currSelect))
         {
             for (int i = 0; i < rayResults.Length; i++)
             {
 
+                if (IsElement(rayResults[i].gameObject) && _clickedObj == null)
+                {
+                    _clickedObj = rayResults[i].gameObject;
+                }
                 if (rayResults[i].gameObject == totalItems[currSelect].gameObject)
                 {
                     returnType = MouseClickRetun.OnSelected;
                 }
-
                 if (rayResults[i].gameObject == scrollRect.gameObject) inBounds = true;
             }
-            if (returnType != MouseClickRetun.OnSelected && inBounds)
+            if (returnType != MouseClickRetun.OnSelected && inBounds && _clickedObj != null)
             {
-
-                returnType = Input.mousePosition.y > totalItems[currSelect].position.y ? MouseClickRetun.AboveSelected : MouseClickRetun.BelowSelected;
+                returnType = MouseClickRetun.OnElement;
             }
         }
         return returnType;
@@ -424,6 +475,33 @@ public class InfiniteScrollVertical : MonoBehaviour
     #region Helper Functions
 
 
+    public int GetIndex(GameObject _obj)
+    {
+        int res = -1;
+        for (int i = 0; i < totalItems.Length; i++)
+        {
+            if (totalItems[i].gameObject == _obj)
+            {
+                res = i;
+                break;
+            }
+        }
+        return res;
+    }
+    public bool IsValidIndex(int _index)
+    {
+        return !(_index < 0 || _index > totalItems.Length - 1);
+    }
+    public bool IsElement(GameObject _obj)
+    {
+        for (int i = 0; i < totalItems.Length; i++)
+        {
+            if (totalItems[i].gameObject == _obj) return true;
+        }
+        return false;
+
+
+    }
     private Vector3 GetTargetPosition(int _inedx)
     {
         float y;
@@ -434,7 +512,6 @@ public class InfiniteScrollVertical : MonoBehaviour
         else
         {
             y = Mathf.Clamp(rectSize * currSelect - scrollRectTransformRef.rect.height / 2 + items[0].rect.height / 2, 0, contentPanelTransform.rect.height / 2);
-            Debug.Log(y);
         }
         return Vector3.up * y;
 
@@ -448,6 +525,11 @@ public class InfiniteScrollVertical : MonoBehaviour
         scrollRect.velocity = Vector2.zero;
         SetCurrSelected(currSelect + _amount);
     }
+    private void ForceSetSelected(int _val)
+    {
+        scrollRect.velocity = Vector2.zero;
+        SetCurrSelected(_val);
+    }
     void UpdateCurrSelected(int _amount)
     {
         SetCurrSelected(currSelect + _amount);
@@ -455,8 +537,25 @@ public class InfiniteScrollVertical : MonoBehaviour
     }
     private void SetCurrSelected(int _index)
     {
-        currSelect = _index;
-        if (!(currSelect < 0 || currSelect > totalItems.Length - 1))
+        if (loopBack)
+        {
+            currSelect = _index;
+        }
+        else
+        {
+            if (clampSelected)
+            {
+                currSelect = Mathf.Clamp(_index, 0, totalItems.Length - 1);
+            }
+            else
+            {
+
+                currSelect = BoundSelected(_index, totalItems.Length);
+            }
+        }
+
+
+        if (IsValidIndex(currSelect))
         {
             EventSystem.current.SetSelectedGameObject(totalItems[currSelect].gameObject);
         }
