@@ -275,18 +275,16 @@ public class InfiniteScrollVertical : MonoBehaviour
     #region Mouse Interactions
     void MouseButtonInteraction()
     {
-        GameObject[] clickList;
-        GameObject button;
-        MouseClickRetun r = GetMouseClick(out clickList, out button);
-
-        //if we are looping
-        if (r == MouseClickRetun.OnElement)
+        GameObject[] clickList; //list of all items clicked on
+        GameObject button; //list of button clicked on
+        MouseClickRetun clickReturn = GetMouseClick(out clickList, out button);
+       
+        if (clickReturn == MouseClickRetun.OnElement)
         {
-            ForceSetSelected(GetIndex(button));
-            autoScroll = true;
-
+            ForceSetSelected(GetIndex(button)); //force set the index of the button clicked on
+            autoScroll = true; //if we clicked on an element, signal to the scroller we need to begins scrolling
         }
-        else if (r == MouseClickRetun.OnSelected)
+        else if (clickReturn == MouseClickRetun.OnSelected)
         {
             if (totalItems[currSelect].TryGetComponent(out ScrollButton buttonRef))
             {
@@ -298,20 +296,43 @@ public class InfiniteScrollVertical : MonoBehaviour
             }
         }
 
-        if (Input.mouseScrollDelta.y > 0) ForceUpdateSelected(-1);
-        else if (Input.mouseScrollDelta.y < 0) ForceUpdateSelected(1);
-
-        GameObject selected;
-        if (GetMouseHover(out selected) == MouseHoverReturn.OverUI)
+        //scroll from delta
+        if (scrollWheelInput)
         {
-            if (selected != null)
-            {
-                if (selected.TryGetComponent(out ScrollButton _scrollButtonRef))
-                {
-                    _scrollButtonRef.hover = true;
-                }
-            }
+            if (Input.mouseScrollDelta.y > 0) ForceUpdateSelected(-1);
+            else if (Input.mouseScrollDelta.y < 0) ForceUpdateSelected(1);
         }
+
+        //if mouse over ui and object hovering over is valid, set object hover value to true
+        //only works with custom scroll buttons
+        GameObject selected;
+        if (GetMouseHover(out selected) == MouseHoverReturn.OverUI && selected != null)
+        {
+            if (selected.TryGetComponent(out ScrollButton _scrollButtonRef))
+            {
+                _scrollButtonRef.hover = true;
+            }
+
+        }
+
+        //set all other hover values to false
+        //this is inefficient, to make this more efficient
+        //store the currently hovered object in a global var
+        //on hover set from null to whatever object
+        //for this variable, define a setter,
+        //
+        //  
+        //
+        //  set
+        //  {
+        //      if(_selectedObj != null && _selectedObject.TryGetComponent(out ScrollButton _scrBtnRef)){
+        //              _scrBtnRef.hover = false
+        //      }
+        //      _selectedObj = value;
+        //
+        //
+        //  }
+        // this setter will ensure that every time the currently hovered button is changd, the previous one gets told to stop hovering
         for (int i = 0; i < totalItems.Length; i++)
         {
             if (totalItems[i].TryGetComponent(out ScrollButton _scrollButtonRef))
@@ -361,6 +382,11 @@ public class InfiniteScrollVertical : MonoBehaviour
     #endregion
 
     #region MouseHover
+    //Info:
+    //  Parameters:
+    //      Gameobject selected object, (the top most element the button is over) *always an element in totalItems
+    //      Gameobject array all objects, (all the UI objects the mouse is over)
+    //  Returns: mouse hover return type
     MouseHoverReturn GetMouseHover(out GameObject _selectedObject)
     {
         MouseHoverReturn res = GetMouseHover(out _, out _selectedObject);
@@ -402,26 +428,34 @@ public class InfiniteScrollVertical : MonoBehaviour
     #endregion
 
     #region MouseClick
+
+
+    //Info:
+    //  Parameters:
+    //      Gameobject clicked object, (the top most button mouse is over)
+    //      Gameobject array all objects, (all the UI objects the mouse is over at time of click)
+    //  Returns: mouse click return type
     MouseClickRetun GetMouseClick()
     {
         return GetMouseClick(out _, out _);
     }
+    //===============================================================
     MouseClickRetun GetMouseClick(out GameObject _clickedObj)
     {
         return GetMouseClick(out _, out _clickedObj);
     }
+    //===============================================================
     MouseClickRetun GetMouseClick(out GameObject[] _allObjects)
     {
         return GetMouseClick(out _allObjects, out _);
     }
+    //===============================================================
     MouseClickRetun GetMouseClick(out GameObject[] _allObjects, out GameObject _clickedObj)
     {
         MouseClickRetun returnType = MouseClickRetun.NoClick;
         _allObjects = null;
         _clickedObj = null;
         if (!Input.GetMouseButtonDown(0)) return returnType;
-
-
         RaycastResult[] raycastResults = GetMouseRaycast();
         _allObjects = new GameObject[raycastResults.Length];
         for (int i = 0; i < _allObjects.Length; i++)
@@ -457,10 +491,11 @@ public class InfiniteScrollVertical : MonoBehaviour
         }
         return returnType;
     }
+    //===============================================================
     #endregion
 
     #region Helper Functions
-    public int GetIndex(GameObject _obj)
+    public int GetIndex(GameObject _obj) //returns the index of a specific object, returns -1 if no index was found
     {
         int res = -1;
         for (int i = 0; i < totalItems.Length; i++)
@@ -473,23 +508,26 @@ public class InfiniteScrollVertical : MonoBehaviour
         }
         return res;
     }
-    public bool IsValidIndex(int _index)
+
+
+    public bool IsValidIndex(int _index) //checks to see if passed in index is within valid bounds for totalitems //could have been a macro if i was in c++ :( 
     {
         return !(_index < 0 || _index > totalItems.Length - 1);
     }
-    public bool IsElement(GameObject _obj)
+
+    public bool IsElement(GameObject _obj) //checks to see if passed in object is an element in the totalitems list
     {
         for (int i = 0; i < totalItems.Length; i++)
         {
             if (totalItems[i].gameObject == _obj) return true;
         }
         return false;
-
-
     }
-    private Vector3 GetTargetPosition(int _inedx)
+
+    private Vector3 GetTargetPosition(int _inedx) //returns the required position of the content rect to center a specific index.
     {
         float y;
+        //if we are not looping back, sometimes we cant perfectly center an object, so we need to clamp
         if (loopBack)
         {
             y = rectSize * currSelect - scrollRectTransformRef.rect.height / 2 + items[0].rect.height / 2 + layoutGroup.padding.top;
@@ -498,42 +536,46 @@ public class InfiniteScrollVertical : MonoBehaviour
         {
             y = Mathf.Clamp(rectSize * currSelect - scrollRectTransformRef.rect.height / 2 + items[0].rect.height / 2, 0, contentPanelTransform.rect.height - scrollRectTransformRef.rect.height);
         }
-        return Vector3.up * y;
-
+        //===============================================================
+        return Vector3.up * y; //convert target y value into a vector3 (0,y,0)
     }
-    private int GetCenterElement()
+    private int GetCenterElement() //Gets the element currently at the center of the view rect
     {
         int res =  Mathf.RoundToInt((contentPanelTransform.localPosition.y + centerOffset) / (rectSize));
+        //if dummy element, select the one right below it
         if (totalItems[BoundSelected(res, totalItems.Length)].GetComponent<DummyElement>() != null)
         {
             res++;
         }
+        //===============================================================
         return res;
     }
-    private void ForceUpdateSelected(int _amount)
+    private void ForceUpdateSelected(int _amount) //updates the current selected and sets velocity to 0, for manual override
     {
         scrollRect.velocity = Vector2.zero;
         SetCurrSelected(currSelect + _amount);
     }
-    private void ForceSetSelected(int _val)
+    private void ForceSetSelected(int _val) //sets the current selected and sets velocity to 0, for manual override
     {
         scrollRect.velocity = Vector2.zero;
         SetCurrSelected(_val);
     }
-    void UpdateCurrSelected(int _amount)
+    void UpdateCurrSelected(int _amount) //updates the current selected index
     {
         SetCurrSelected(currSelect + _amount);
     }
-    private void SetCurrSelected(int _index)
+    private void SetCurrSelected(int _index) //Sets the current selected index
     {
-
+        //if on a dummy elment move up or down depending on where we are currently located relative to the dummy element
         if (totalItems[BoundSelected(_index, totalItems.Length)].GetComponent<DummyElement>() != null)
         {
 
             _index = currSelect > _index ? _index - 1 : _index + 1;
-
-
         }
+        //===============================================================
+
+        //since currselected can be any number even outside the range of the total elements range, if we are not looping back we have to clamp it
+        //we use clamp here and not boundSelected method because boundselected acts as a modulo not a clamp
         if (loopBack)
         {
             currSelect = _index;
@@ -542,7 +584,10 @@ public class InfiniteScrollVertical : MonoBehaviour
         {
             currSelect = Mathf.Clamp(_index, 0, totalItems.Length - 1);
         }
+        //===============================================================
 
+        //if the index we set is valid, aka its an element that exists currently in the contentrect, we set the selected object to that.
+        //otherwise we wait untill the index is valid and keep selected to null
         if (IsValidIndex(currSelect))
         {
             EventSystem.current.SetSelectedGameObject(totalItems[currSelect].gameObject);
@@ -551,8 +596,9 @@ public class InfiniteScrollVertical : MonoBehaviour
         {
             EventSystem.current.SetSelectedGameObject(null);
         }
+        //===============================================================
     }
-    private RaycastResult[] GetMouseRaycast()
+    private RaycastResult[] GetMouseRaycast() //returns a raycast list from UI
     {
         PointerEventData pointerEventData = new PointerEventData(EventSystem.current);
         pointerEventData.position = Input.mousePosition;
@@ -561,7 +607,7 @@ public class InfiniteScrollVertical : MonoBehaviour
         return rayResults.ToArray();
 
     }
-    int BoundSelected(int _index, int _mod)
+    int BoundSelected(int _index, int _mod) //binds the index passed in, to within the mod value, this mod function has been modified to work with negative values
     {
         if (_index >= 0)
         {
