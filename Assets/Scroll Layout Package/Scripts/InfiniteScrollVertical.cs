@@ -54,7 +54,7 @@ public class InfiniteScrollVertical : MonoBehaviour
     private bool autoScroll = true;
     private float rectSize;
     private float targetY;
-    public RectTransform[] totalItems;
+    private RectTransform[] totalItems;
     private Vector2 tempVel;
     private bool updated;
     private RectTransform scrollRectTransformRef;
@@ -458,8 +458,6 @@ public class InfiniteScrollVertical : MonoBehaviour
     #endregion
 
     #region Helper Functions
-
-
     public int GetIndex(GameObject _obj)
     {
         int res = -1;
@@ -492,11 +490,11 @@ public class InfiniteScrollVertical : MonoBehaviour
         float y;
         if (loopBack)
         {
-            y = rectSize * currSelect - scrollRectTransformRef.rect.height / 2 + items[0].rect.height / 2;
+            y = rectSize * currSelect - scrollRectTransformRef.rect.height / 2 + items[0].rect.height / 2 + layoutGroup.padding.top ;
         }
         else
         {
-            y = Mathf.Clamp(rectSize * currSelect - scrollRectTransformRef.rect.height / 2 + items[0].rect.height / 2, 0, contentPanelTransform.rect.height / 2);
+            y = Mathf.Clamp(rectSize * currSelect - scrollRectTransformRef.rect.height / 2 + items[0].rect.height / 2, 0, contentPanelTransform.rect.height - scrollRectTransformRef.rect.height);
         }
         return Vector3.up * y;
 
@@ -521,7 +519,21 @@ public class InfiniteScrollVertical : MonoBehaviour
     }
     private void SetCurrSelected(int _index)
     {
-        Debug.Log("set");
+
+        if(totalItems[BoundSelected(_index, totalItems.Length)].GetComponent<DummyElement>() != null)
+        {
+            if (currSelect > _index)
+            {
+                _index--;
+
+
+            }
+            else
+            {
+                _index++;
+
+            }
+        }
         if (loopBack)
         {
             currSelect = _index;
@@ -538,7 +550,6 @@ public class InfiniteScrollVertical : MonoBehaviour
         else
         {
             EventSystem.current.SetSelectedGameObject(null);
-
         }
     }
     private RaycastResult[] GetMouseRaycast()
