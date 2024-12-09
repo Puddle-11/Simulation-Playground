@@ -128,8 +128,10 @@ public class InfiniteScrollVertical : MonoBehaviour
 
         int tempSelected;
         //temp selected will always be the elemet at the center of the rect
+
         tempSelected = GetCenterElement();
         //if currently using mouse, pause snapping
+
         if ((Input.GetMouseButton(0) || Mathf.Abs(scrollRect.velocity.y) > 20) && mouseInput)
         {
             mouseTimer += Time.deltaTime;
@@ -156,9 +158,9 @@ public class InfiniteScrollVertical : MonoBehaviour
         scrollRect.vertical = mouseInput;
 
         if (mouseInput) MouseButtonInteraction();
-        if (keyboardInput)  KeyboardInput();
+        if (keyboardInput) KeyboardInput();
         if (loopBack) LoopBack();
-        
+
         if (IsValidIndex(currSelect) && !staticSelector) selector.transform.position = totalItems[currSelect].transform.position;
         else if (staticSelector) selector.GetComponent<RectTransform>().anchoredPosition = Vector3.zero;
 
@@ -490,7 +492,7 @@ public class InfiniteScrollVertical : MonoBehaviour
         float y;
         if (loopBack)
         {
-            y = rectSize * currSelect - scrollRectTransformRef.rect.height / 2 + items[0].rect.height / 2 + layoutGroup.padding.top ;
+            y = rectSize * currSelect - scrollRectTransformRef.rect.height / 2 + items[0].rect.height / 2 + layoutGroup.padding.top;
         }
         else
         {
@@ -501,7 +503,12 @@ public class InfiniteScrollVertical : MonoBehaviour
     }
     private int GetCenterElement()
     {
-        return Mathf.RoundToInt((contentPanelTransform.localPosition.y + centerOffset) / (rectSize));
+        int res =  Mathf.RoundToInt((contentPanelTransform.localPosition.y + centerOffset) / (rectSize));
+        if (totalItems[BoundSelected(res, totalItems.Length)].GetComponent<DummyElement>() != null)
+        {
+            res++;
+        }
+        return res;
     }
     private void ForceUpdateSelected(int _amount)
     {
@@ -520,19 +527,12 @@ public class InfiniteScrollVertical : MonoBehaviour
     private void SetCurrSelected(int _index)
     {
 
-        if(totalItems[BoundSelected(_index, totalItems.Length)].GetComponent<DummyElement>() != null)
+        if (totalItems[BoundSelected(_index, totalItems.Length)].GetComponent<DummyElement>() != null)
         {
-            if (currSelect > _index)
-            {
-                _index--;
+
+            _index = currSelect > _index ? _index - 1 : _index + 1;
 
 
-            }
-            else
-            {
-                _index++;
-
-            }
         }
         if (loopBack)
         {
